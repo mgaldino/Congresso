@@ -59,7 +59,8 @@ proposicoes <- bind_rows(lista_proposicoes)
 urgencia <- bind_rows(lista_urgencia) 
 
 # dput(c(urgencia$ementa[urgencia$id==469773], urgencia$ementa[urgencia$id==469774], urgencia$ementa[urgencia$id==469956]))
-
+saveRDS(proposicoes, file="proposicoes2010-23.rds")
+saveRDS(urgencia, file="urgencia2010-23.rds")
 
 urgencia <- urgencia %>%
   mutate(ementa_simplificada = gsub("(°|º)", "", ementa ),
@@ -69,7 +70,7 @@ urgencia <- urgencia %>%
 
 
 # Expressão regular ajustada para capturar o ano em diferentes formatos
-padrao <- "(projeto de decreto legislativo|projeto de decreto legislativo (pdc)|prc|mensagem|pdc|plp|pl|pdl|msc|projeto de lei|projeto de lei (pl)|projeto de lei do senado federal|projeto de lei complementar|projeto de resolução)\\s?(n|no)?\\.?\\s?([0-9]+[,.\\s]?[0-9]*[A-Za-z]?)(,? de |/|/ )?(\\d{2,4})"
+padrao <- "(projeto de decreto legislativo|projeto de decreto legislativo (pdc)|prc|mensagem|pdc|plp|pl|pdl|msc|projeto de lei|projeto d[eo] lei (pl)|projeto de lei do senado federal|projeto de lei complementar|projeto de resolução)\\s?(n|no)?\\.?\\s?([0-9]+[,.\\s]?[0-9]*[A-Za-z]?)(,? de |/|/ )?(\\d{2,4})"
 
 # Extrair as informações usando str_extract
 # resultados <- str_extract(urgencia$ementa_simplificada, padrao)
@@ -85,11 +86,20 @@ urgencia <- urgencia %>%
          e_urgencia = grepl("urgência", ementa_simplificada),
          e_projeto_resolução = grepl("projeto de resolução", ementa_simplificada))
 
+# protetivas de urgência - evitar
+
+
 urgencia <- urgencia %>%
-  mutate(apreciacao2 = ifelse(e_urgencia & !e_projeto_resolução & apreciacao == "REQ" & grepl("projeto de [0-9]+", ementa_simplificada),
-                str_extract(ementa_simplificada, "projeto de [0-9]+/[0-9]+"), "erro"))
+  mutate(apreciacao = ifelse(e_urgencia & !e_projeto_resolução & apreciacao == "REQ" & grepl("projeto de [0-9]+", ementa_simplificada),
+                str_extract(ementa_simplificada, "projeto de [0-9]+/[0-9]+"), apreciacao))
 
+saveRDS(urgencia, file="urgencia2010-23_modificado.rds")
 
+urgencia <- urgencia %>%
+  mutate(ementa = str_replace_all(ementa, "[\r\n\t]" , ""),
+         ementa_simplificada = str_replace_all(ementa_simplificada, "[\r\n\t]" , ""))
+
+write.table(urgencia, file = "urgencia.csv", row.names = FALSE, sep="\t")
 tipo_pl_urgencia <- urgencia %>%
   inner_join(select(proposicoes, c(id, siglaTipo, numero, ano)), by="id") %>%
   arrange(id)
