@@ -62,21 +62,36 @@ urgencia <- bind_rows(lista_urgencia)
 saveRDS(proposicoes, file="proposicoes2010-23.rds")
 saveRDS(urgencia, file="urgencia2010-23.rds")
 
+##
 proposicao_id <- 500080
-url <- "https://dadosabertos.camara.leg.br/api/v2/referencias/proposicoes/codSituacao"
-response <- GET(url)
-content <- fromJSON(rawToChar(response$content))
-# Verificar o status da resposta
-if (status_code(response) == 200) {
-  # Converter o conteúdo da resposta de JSON para um data frame
-  content <- fromJSON(rawToChar(response$content))
-  situacao <- content$dados$situacao
+get_situacao_proposicoes <- function(proposicao_id) {
+  base_url <- paste0("https://dadosabertos.camara.leg.br/api/v2/proposicoes/", proposicao_id)
+  response <- GET(url = base_url)
   
-  # Imprimir a situação da proposição
-  print(situacao)
-} else {
-  cat("Erro na requisição: ", status_code(response), "\n")
+  if (status_code(response) == 200) {
+    content <- fromJSON(rawToChar(response$content))
+    tmp_status = ifelse(is.null(content$dados$statusProposicao$descricaoSituacao),
+                       content$dados$statusProposicao$descricaoTramitacao, content$dados$statusProposicao$descricaoSituacao)
+    
+    df <- data.frame(id = content$dados$id, data = content$dados$dataApresentacao, status = tmp_status,
+                     status_apreciacao = content$dados$statusProposicao$apreciacao)
+    } else {
+    stop("Erro na requisição: ", status_code(response))
+    }
+  return(df)
+  }
+
+list_df <-list()
+n <- nrow(urgencia)
+for (i in i:n) {
+  proposicao_id <- urgencia$id[i]
+  list_df[[i]] <- get_situacao_proposicoes(proposicao_id)
+  
+  if(i%%100 == 0) {print(i)}
 }
+
+df_situacao <- bind_rows(list_df)
+saveRDS(df_situacao, file="df_situacao2010-23.rds")
 
 
 get_sit_proposicoes <- function(year) {
