@@ -1,17 +1,22 @@
-#Analysis
-library(tidyverse)
-library(readxl)
-urgencia_manual <- read_excel("urgencia_manual.xlsx")
-glimpse(urgencia_manual)
-length(unique(urgencia_manual$apreciacao))
+# analysis
+library(ggplot2)
 
-padrao1 <- "(prc|plp|pl|projeto de lei)\\s(n|n.)?\\s?([0-9]+[,.\\s]?[0-9]*[A-Za-z]?)(,? de |/)?(\\d{2,4})"
+urgencia_ano_tipo <- urgencia %>%
+  group_by(ano, tipo_apreciacao) %>%
+  summarise(qtde = n_distinct(id))
 
-gsub("\\.", "", "requer regime de urgência para apreciação do pl n 5.533")
+urgencia_ano_tipo %>%
+  ggplot(aes(x=ano, y=qtde, group = tipo_apreciacao,
+             colour = tipo_apreciacao)) +
+  geom_line()
 
-teste <- urgencia_manual$ementa_simplificada[is.na(urgencia_manual$apreciacao)]
-# teste <- gsub("\\.", "", teste)
-str_extract(teste, "padrao1")
+urgencia_ano_tipo %>%
+  filter(tipo_apreciacao != "pl") %>%
+  ggplot(aes(x=ano, y=qtde, group = tipo_apreciacao,
+             colour = tipo_apreciacao)) +
+  geom_line()
 
-teste1 <- urgencia$ementa_simplificada[urgencia$id == 2023953]
-str_extract(teste1, "(projeto de decreto legislativo \\(pdc\\))")
+## proportion
+
+prop_urgencias <- proposicoes %>%
+  left_join(select(urgencia, id, apreciacao, tipo_apreciacao), by="id")
